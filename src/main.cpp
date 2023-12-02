@@ -276,7 +276,7 @@ public:
     }
 
 
-    void updateDirtiness(int index) {
+    void updateDirtiness() {
         // Update the dirtiness for each square
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
@@ -288,7 +288,7 @@ public:
 
     ll calculateAverageDirtiness() {
         for (int t = 0; t < 2 * getPathLength(); ++t) {
-            updateDirtiness(t % getPathLength());
+            updateDirtiness();
             // Update the current position based on the direction at the current index of the path
             this->currentPos = this->currentPos.getPosDirection(this->path[t % getPathLength()]);
             totalDirt[currentPos.i][currentPos.j] = 0;
