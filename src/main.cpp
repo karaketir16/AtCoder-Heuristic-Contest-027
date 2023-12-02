@@ -1,12 +1,35 @@
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <vector>
 #include <set>  
 #include <random>
 #include <cassert>
+#include <numeric>
+
+
+#include <chrono>
 
 
 using namespace std;
+
+typedef long long int ll;
+
+
+std::chrono::steady_clock::time_point beginTime;
+std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+
+void setBeginTime(){
+    beginTime = std::chrono::steady_clock::now();
+}
+
+ll getElapsedTimeMilli(){
+    std::chrono::steady_clock::time_point endTime = std::chrono::steady_clock::now();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(endTime - beginTime).count();
+}
+
 
 #define MAX_N 42
 #define MAX_LENGTH 100000
@@ -90,12 +113,15 @@ private:
     int n;
     bool horizontal[MAX_N][MAX_N - 1];
     bool vertical[MAX_N - 1][MAX_N];
-    int dirt[MAX_N][MAX_N];
+    ll dirt[MAX_N][MAX_N];
     // set<Position> notVisited;
     bool visited[MAX_N][MAX_N];
     vector<Direction> path;
 
     Position currentPos;
+
+    ll totalDirt[MAX_N][MAX_N];
+
 public:
     Storage(int n): n(n), currentPos(0, 0) {
         std::string s;
@@ -198,8 +224,12 @@ public:
         cout << pos.i << " " << pos.j << endl;
     }
 
-    void printPath() {
-        for(auto direction: this->path) {
+    auto getPath(){
+        return this->path;
+    }
+
+    void printPath(vector<Direction> &path) {
+        for(auto &direction: path) {
             switch(direction) {
                 case UP:
                     cout << "U";
@@ -222,8 +252,8 @@ public:
     }
 
     void resetVisited() {
-        for (int i = 0; i < this->n; i++) {
-            for(int j = 0; j < this->n; j++) {
+        for (int i = 0; i < MAX_N; i++) {
+            for(int j = 0; j < MAX_N; j++) {
                 this->visited[i][j] = false;
             }
         }
@@ -233,33 +263,88 @@ public:
         this->path.clear();
     }
 
+    void resetTotalDirt(){
+        for(int i = 0; i < MAX_N; i++) {
+            for(int j = 0; j < MAX_N; j++) {
+                this->totalDirt[i][j] = 0;
+            }
+        }
+    }
+
     int getPathLength() {
         return this->path.size();
     }
+
+
+    void updateDirtiness(int index) {
+        // Update the dirtiness for each square
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                totalDirt[i][j] += dirt[i][j];
+            }
+        }
+    }
+
+
+    ll calculateAverageDirtiness() {
+        for (int t = 0; t < 2 * getPathLength(); ++t) {
+            updateDirtiness(t % getPathLength());
+            // Update the current position based on the direction at the current index of the path
+            this->currentPos = this->currentPos.getPosDirection(this->path[t % getPathLength()]);
+            totalDirt[currentPos.i][currentPos.j] = 0;
+        }
+
+        ll sum = 0;
+        for (int i = 0; i < n; i++) {
+            sum += std::accumulate(totalDirt[i], totalDirt[i] + n, 0);
+        }
+
+        return sum / getPathLength();
+    }
+
     
 };
 
 int main()
 {
+    setBeginTime();
+
     int N;
     cin >> N;
     Storage storage(N);
 
     Position pos(0, 0);
 
-    do{
+    ll bestAvgDirtiness = INT64_MAX;
+    vector<Direction> bestPath;
+
+    int tried = 0;
+
+    while(getElapsedTimeMilli() < 1900){
+        tried++;
+
         storage.resetVisited();
         storage.resetPath();
+        storage.resetTotalDirt();
 
         storage.dfs(pos);
 
-        //assert that the path is too long
-        #if DEVEL_ASSERT
-        assert(storage.getPathLength() <= MAX_LENGTH && "Path is too long");
-        cerr << storage.getPathLength() << endl;
-        #endif
+        if(storage.getPathLength() > MAX_LENGTH){
+            continue;
+        }
 
-    } while(storage.getPathLength() > MAX_LENGTH);
+
+
+        ll dirtiness = storage.calculateAverageDirtiness();
+        if(dirtiness < bestAvgDirtiness){
+            bestAvgDirtiness = dirtiness;
+            bestPath = storage.getPath();
+        }
+
+        #if not SHUFFLE
+        break;
+        #endif
+    } 
     
 
     // cout << "Done dfs" << endl;
@@ -267,9 +352,11 @@ int main()
 
     #if DEVEL
     storage.visualize();
+    cerr << "Tried: " << tried << "\t Map Size: " << N << "\t Path Length: " << bestPath.size() << "\t Avg Dirtiness: " << bestAvgDirtiness << endl;
     #endif
 
-    storage.printPath();
+    storage.printPath(bestPath);
 
     return 0;
 }
+
