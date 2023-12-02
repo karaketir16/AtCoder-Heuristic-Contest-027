@@ -7,22 +7,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 
 
-file(GLOB_RECURSE SOURCES
-    src/*.c 
-    src/*.cpp
-    )
-
-file(GLOB_RECURSE HEADERS
-    include/*.hpp
-    include/*.h
-    )
-
-add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
-add_executable(${PROJECT_NAME}_s ${SOURCES} ${HEADERS})
+add_executable(dfs src/dfs.cpp)
+add_executable(bfs_rt src/bfs_rt.cpp)
 
 
 target_compile_definitions(
-    ${PROJECT_NAME}_s PRIVATE
+    dfs PRIVATE
     # DEVEL_ASSERT=1
     # DEVEL=1
     MIN_PRINT=1
@@ -30,7 +20,7 @@ target_compile_definitions(
 )
 
 target_compile_definitions(
-    ${PROJECT_NAME} PRIVATE
+    bfs_rt PRIVATE
     # DEVEL_ASSERT=1
     # DEVEL=1
     MIN_PRINT=1
