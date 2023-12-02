@@ -48,7 +48,7 @@ enum Direction {
     MAX_DIRECTION
 };
 
-vector<Direction> defaultDirections = {UP, DOWN, LEFT, RIGHT};
+vector<Direction> defaultDirections = {DOWN, RIGHT, UP, LEFT};
 
 struct Position {
     int i;
@@ -181,7 +181,7 @@ public:
         }
     }
 
-    void dfs(Position& pos, vector<Direction> directions = defaultDirections) {
+    void dfs(Position& pos, vector<Direction>& directions = defaultDirections) {
         #if SHUFFLE
         std::shuffle(directions.begin(), directions.end(), g);
         #endif
@@ -352,6 +352,10 @@ int main()
 
     #if DEVEL
     storage.visualize();
+    cerr << "Tried: " << tried << "\t Map Size: " << N << "\t Path Length: " << bestPath.size() << "\t Avg Dirtiness: " << bestAvgDirtiness << endl;
+    #endif
+
+    #if MIN_PRINT
     cerr << "Tried: " << tried << "\t Map Size: " << N << "\t Path Length: " << bestPath.size() << "\t Avg Dirtiness: " << bestAvgDirtiness << endl;
     #endif
 

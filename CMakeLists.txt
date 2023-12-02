@@ -25,6 +25,7 @@ target_compile_definitions(
     ${PROJECT_NAME}_s PRIVATE
     # DEVEL_ASSERT=1
     # DEVEL=1
+    MIN_PRINT=1
     SHUFFLE=1
 )
 
@@ -32,6 +33,7 @@ target_compile_definitions(
     ${PROJECT_NAME} PRIVATE
     # DEVEL_ASSERT=1
     # DEVEL=1
+    MIN_PRINT=1
     SHUFFLE=0
 )
 
