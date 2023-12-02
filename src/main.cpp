@@ -7,8 +7,6 @@
 #include <random>
 #include <cassert>
 #include <numeric>
-
-
 #include <chrono>
 
 
@@ -181,16 +179,17 @@ public:
         }
     }
 
-    void dfs(Position& pos, vector<Direction>& directions = defaultDirections) {
-        #if SHUFFLE
-        std::shuffle(directions.begin(), directions.end(), g);
-        #endif
+    void dfs(Position& pos, vector<Direction> directions = defaultDirections, bool shuffle = true) {
+        if(shuffle){
+            std::shuffle(directions.begin(), directions.end(), g);
+        }
+
         this->visited[pos.i][pos.j] = true;
         for(auto direction: directions) {
             Position nextPos = pos.getPosDirection(direction);
             if(this->isValid(pos, nextPos) && !this->visited[nextPos.i][nextPos.j]) {
                 this->path.push_back(direction);
-                this->dfs(nextPos);
+                this->dfs(nextPos, directions, shuffle);
                 this->path.push_back(pos.getReverseDirection(direction));
             }
         }
@@ -209,6 +208,15 @@ public:
             }
             for (int j = 0; j < this->n; j++) {
                 cout << (horizontal[i][j] == 1 ? "X" : "I") << "\t";
+            }
+            cout << endl;
+        }
+    }
+
+    void visualizeVisited() {
+        for(int i = 0; i < this->n; i++) {
+            for(int j = 0; j < this->n; j++) {
+                cout << this->visited[i][j] << "\t";
             }
             cout << endl;
         }
@@ -287,16 +295,25 @@ public:
 
 
     ll calculateAverageDirtiness() {
-        for (int t = 0; t < 2 * getPathLength(); ++t) {
+        
+        for (int t = 0; t < getPathLength(); ++t) {
             updateDirtiness();
             // Update the current position based on the direction at the current index of the path
-            this->currentPos = this->currentPos.getPosDirection(this->path[t % getPathLength()]);
+            this->currentPos = this->currentPos.getPosDirection(this->path[t]);
             totalDirt[currentPos.i][currentPos.j] = 0;
         }
 
         ll sum = 0;
-        for (int i = 0; i < n; i++) {
-            sum += std::accumulate(totalDirt[i], totalDirt[i] + n, 0);
+
+        for (int t = 0; t < getPathLength(); ++t) {
+            updateDirtiness();
+            // Update the current position based on the direction at the current index of the path
+            this->currentPos = this->currentPos.getPosDirection(this->path[t]);
+            totalDirt[currentPos.i][currentPos.j] = 0;
+
+            for (int i = 0; i < n; i++) {
+                sum += std::accumulate(totalDirt[i], totalDirt[i] + n, 0);
+            }
         }
 
         return sum / getPathLength();
@@ -313,7 +330,7 @@ int main()
     cin >> N;
     Storage storage(N);
 
-    Position pos(0, 0);
+    
 
     ll bestAvgDirtiness = INT64_MAX;
     vector<Direction> bestPath;
@@ -327,7 +344,11 @@ int main()
         storage.resetPath();
         storage.resetTotalDirt();
 
-        storage.dfs(pos);
+        Position pos(0, 0);
+        
+        storage.dfs(pos, defaultDirections, tried > 5);
+
+        shuffle(defaultDirections.begin(), defaultDirections.end(), g);
 
         if(storage.getPathLength() > MAX_LENGTH){
             continue;
