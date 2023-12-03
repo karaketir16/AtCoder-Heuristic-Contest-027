@@ -129,16 +129,18 @@ private:
     bool vertical[MAX_N - 1][MAX_N];
     ll dirt[MAX_N][MAX_N];
     ll currentDirt[MAX_N][MAX_N];
-    // set<Position> notVisited;
+
     bool visited[MAX_N][MAX_N];
     vector<Direction> innerPath;
 
+    int visitedCount;
+    int cellCount;
+
     Position currentPos;
-
-    ll totalDirt[MAX_N][MAX_N];
-
 public:
     Storage(int n): n(n), currentPos(0, 0) {
+        cellCount = n*n;
+
         std::string s;
         
         for(int i = 0; i < n - 1; i++) {
@@ -171,11 +173,7 @@ public:
                 this->currentDirt[i][j] = 0;
             }
         }
-        for (int i = 0; i < n; i++) {
-            for(int j = 0; j < n; j++) {
-                this->visited[i][j] = false;
-            }
-        }
+        resetVisited();
     }
 
     bool isValid(Position pos1, Position pos2) {
@@ -197,12 +195,16 @@ public:
         }
     }
 
-    void dfs(Position& pos, Position dest = Position(-1, -1)) {
+    void dfs(Position& pos, Position dest = Position(-1, -1), bool stopAllVisited = false) {
+        this->setVisited(pos);
         if(pos == dest) {
             throw "Found the destination";
         } 
 
-        this->visited[pos.i][pos.j] = true;
+        if(stopAllVisited && this->isAllVisited()) {
+            throw "All visited";
+        }
+        
         for(auto direction: defaultDirections) {
             Position nextPos = pos.getPosDirection(direction);
             if(this->isValid(pos, nextPos) && !this->visited[nextPos.i][nextPos.j]) {
@@ -289,18 +291,11 @@ public:
                 this->visited[i][j] = false;
             }
         }
+        visitedCount = 0;
     }
 
     void resetPath() {
         this->innerPath.clear();
-    }
-
-    void resetTotalDirt(){
-        for(int i = 0; i < MAX_N; i++) {
-            for(int j = 0; j < MAX_N; j++) {
-                this->totalDirt[i][j] = 0;
-            }
-        }
     }
 
     int getPathLength() {
@@ -322,10 +317,17 @@ public:
     }
 
     ll getCurrentDirt(Position pos) {
-        return this->dirt[pos.i][pos.j];
+        return this->currentDirt[pos.i][pos.j];
+    }
+
+    void cleanCurrentDirt(Position pos) {
+        this->currentDirt[pos.i][pos.j] = 0;
     }
 
     void setVisited(Position pos) {
+        if(!this->visited[pos.i][pos.j]){
+            this->visitedCount++;
+        }
         this->visited[pos.i][pos.j] = true;
     }
 
@@ -342,6 +344,27 @@ public:
         this->currentPos = this->currentPos.getPosDirection(direction);
     }
 
+    void setPath(vector<Direction> path) {
+        this->innerPath = path;
+    }
+
+    bool isAllVisited(){
+        return this->visitedCount == this->cellCount;
+    }
+
+    Position maxCurrentDirtPos(){
+        Position maxPos = Position(0, 0);
+        ll maxDirt = currentDirt[0][0];
+        for(int i = 0; i < this->n; i++) {
+            for(int j = 0; j < this->n; j++) {
+                if(currentDirt[i][j] > maxDirt) {
+                    maxDirt = currentDirt[i][j];
+                    maxPos = Position(i, j);
+                }
+            }
+        }
+        return maxPos;
+    }
 };
 
 
@@ -353,8 +376,14 @@ struct Tree {
     Tree* parent;
     vector<Tree*> children;
     ll maxDirtInTree;
+    Tree *maxDirtInTreePtr;
+    Tree *wayToMaxDirt;
 
-    Tree(Position pos, Tree* parent = nullptr): pos(pos), parent(parent), totalDirt(0) {}
+    Tree(Position pos, Tree* parent = nullptr): pos(pos), parent(parent) {
+        this->maxDirtInTree = storage->getCurrentDirt(pos);
+        this->maxDirtInTreePtr = this;
+        this->wayToMaxDirt = nullptr;
+    }
 
     void addChild(Tree* child) {
         this->children.push_back(child);
@@ -366,40 +395,46 @@ struct Tree {
     // generate tree using bfs
     void generateTree() {
 
-        if(this->pos == Position(0, 0)) {
-            zeroPtr = this;
-        } 
+        queue<pair<int,Tree*>> nodeQueue;
 
-        vector<Direction> directions = {DOWN, RIGHT, UP, LEFT};
-        vector<Position> positions = {this->pos.getPosDirection(DOWN), this->pos.getPosDirection(RIGHT), this->pos.getPosDirection(UP), this->pos.getPosDirection(LEFT)};
-        for(int i = 0; i < MAX_DIRECTION; i++) {
-            if(storage->isValid(this->pos, positions[i]) && !storage->isVisited(positions[i])) {
-                Tree* child = new Tree(positions[i], this);
-                this->addChild(child);
-                storage->setVisited(positions[i]);
-                child->generateTree();
+        nodeQueue.push({0,this});
+        storage->setVisited(this->pos);
+
+        while(!nodeQueue.empty()) {
+            auto [depth, currentNode] = nodeQueue.front();
+            nodeQueue.pop();
+
+            if(currentNode->pos == Position(0, 0)) {
+                zeroPtr = currentNode;
+            }
+
+            vector<Position> positions;
+            for(auto direction: someDirections) {
+                positions.push_back(currentNode->pos.getPosDirection(direction));
+            }
+            
+            for(int i = 0; i < MAX_DIRECTION; i++) {
+                if(storage->isValid(currentNode->pos, positions[i]) && !storage->isVisited(positions[i])) {
+                    Tree* child = new Tree(positions[i], currentNode);
+                    currentNode->addChild(child);
+                    storage->setVisited(positions[i]);
+                    nodeQueue.push({depth + 1, child});
+                }
+            }
+
+            if(currentNode->children.size() == 0) {
+                Tree* currentTree = currentNode;
+                currentTree->maxDirtInTree += storage->getDirt(currentTree->pos) * depth;
+                while(currentTree->parent != nullptr) {
+                    if(currentTree->maxDirtInTree > currentTree->parent->maxDirtInTree) {
+                        currentTree->parent->maxDirtInTree = currentTree->maxDirtInTree;
+                        currentTree->parent->maxDirtInTreePtr = currentTree->maxDirtInTreePtr;
+                        currentTree->parent->wayToMaxDirt = currentTree;
+                    }
+                    currentTree = currentTree->parent;
+                }
             }
         }
-
-        for(auto child: this->children) {
-            if(child->maxDirtInTree > this->maxDirtInTree) {
-                this->maxDirtInTree = child->maxDirtInTree;
-            }
-        }
-    }
-
-    pair<Direction, Tree*> maxValDirection() {
-        ll maxVal = -1;
-        Direction maxDirection = MAX_DIRECTION;
-        Tree *maxChild = nullptr;
-        for(auto child: this->children) {
-            if(child->maxDirtInTree > maxVal) {
-                maxVal = child->maxDirtInTree;
-                maxDirection = this->pos.getDirection(child->pos);
-                maxChild = child;
-            }
-        }
-        return make_pair(maxDirection, maxChild);
     }
 };
 
@@ -419,32 +454,55 @@ int main()
     storage = new Storage(N);
 
     Position pos(0, 0);
-    storage->dfs(pos);
+    try {
+        storage->dfs(pos, Position(-1,-1), true);
+    } catch (const char* msg) {
 
-    while(storage->getPathLength() < (MAX_LENGTH - 2000) && getElapsedTimeMilli() < 1900){
+    }
+    
+
+    auto myLimit = storage->getPathLength() + N * N;
+
+    while(storage->getPathLength() < myLimit && getElapsedTimeMilli() < 1900){
 
         storage->resetVisited();
 
-
-        Tree* root = new Tree(storage->getCurrentPos());
-        storage->setVisited(storage->getCurrentPos());
         storage->updateDirtiness();
+        storage->cleanCurrentDirt(storage->getCurrentPos());
+
+        Tree* root = new Tree(storage->getCurrentPos());        
+        
         root->generateTree();
-            
-        auto [direction, child] = root->maxValDirection();
+
+        // auto realMax = storage->maxCurrentDirtPos();
+        // cerr << "Max dirtiness from real: " << storage->getCurrentDirt(realMax) << " at " << realMax.i << " " << realMax.j << endl;
+
+        auto direction = root->pos.getDirection(root->wayToMaxDirt->pos);
+        if(direction == MAX_DIRECTION) {
+            direction = root->pos.getDirection(root->children[0]->pos);
+        }
 
         storage->goDirection(direction);
     }
 
-    //TODO run parent parent from zeroPtr to root, then reverse the path
+    //parent from zeroPtr to root, then reverse the path
+    storage->resetVisited();
+    Tree *root = new Tree(storage->getCurrentPos());
+    root->generateTree();
 
-    try {
-        storage->resetVisited();
-        auto pos = storage->getCurrentPos();
-        storage->dfs(pos, Position(0, 0));
-    } catch (const char* msg) {
-        // cerr << msg << endl;
+    vector<Direction> returnPath;
+    Tree *currentTree = Tree::zeroPtr;
+    while(currentTree->parent != nullptr) {
+        auto dir = currentTree->pos.getDirection(currentTree->parent->pos);
+        returnPath.push_back(dir);
+        currentTree = currentTree->parent;
     }
+    returnPath = getReversePath(returnPath);
+
+    auto path = storage->getPath();
+    path.insert(path.end(), returnPath.begin(), returnPath.end());
+
+    storage->setPath(path);
 
     storage->printPath();
 
