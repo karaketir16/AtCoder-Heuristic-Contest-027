@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(dfs src/dfs.cpp)
 add_executable(bfs_rt src/bfs_rt.cpp)
+add_executable(bfs src/bfs.cpp)
 
 
 target_compile_definitions(
@@ -26,6 +27,7 @@ target_compile_definitions(
     MIN_PRINT=1
     SHUFFLE=0
 )
+
 
 
 # Define the library target
