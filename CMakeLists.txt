@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 add_executable(dfs src/dfs.cpp)
 add_executable(bfs_rt src/bfs_rt.cpp)
 add_executable(bfs src/bfs.cpp)
-
+add_executable(minPath src/minPath.cpp)
 
 target_compile_definitions(
     dfs PRIVATE
