@@ -72,6 +72,8 @@ vector<Direction> getReversePath(vector<Direction> path) {
 
 const vector<Direction> defaultDirections = {DOWN, RIGHT, UP, LEFT};
 
+const vector<Direction> circleDirections = {RIGHT, DOWN, LEFT, LEFT, UP, UP, RIGHT, RIGHT};
+
 vector<Direction> someDirections = defaultDirections;
 
 struct Position {
@@ -365,6 +367,17 @@ public:
         }
         return maxPos;
     }
+
+    void makeCircle(){
+        for(auto direction: circleDirections){
+            Position nextPos = this->currentPos.getPosDirection(direction);
+            if(this->isValid(this->currentPos, nextPos)) {
+                this->goDirection(direction);
+                this->updateDirtiness();
+                this->cleanCurrentDirt(this->getCurrentPos());
+            }
+        }
+    }
 };
 
 
@@ -463,12 +476,16 @@ int main()
 
     auto myLimit = storage->getPathLength() + N * N;
 
+    bool circle = false;
+
     while(storage->getPathLength() < myLimit && getElapsedTimeMilli() < 1900){
 
-        storage->resetVisited();
+        if(circle){
+            storage->makeCircle();
+            circle = false;
+        }
 
-        storage->updateDirtiness();
-        storage->cleanCurrentDirt(storage->getCurrentPos());
+        storage->resetVisited();
 
         Tree* root = new Tree(storage->getCurrentPos());        
         
@@ -482,7 +499,14 @@ int main()
             direction = root->pos.getDirection(root->children[0]->pos);
         }
 
+        if(root->wayToMaxDirt == root->maxDirtInTreePtr){
+            circle = true;
+            cerr << "Circle" << endl;
+        }
+
         storage->goDirection(direction);
+        storage->updateDirtiness();
+        storage->cleanCurrentDirt(storage->getCurrentPos());
     }
 
     //parent from zeroPtr to root, then reverse the path
